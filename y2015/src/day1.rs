@@ -1,7 +1,6 @@
-use std::error::Error;
 use std::fs;
 
-pub fn execute() -> Result<(), Box<dyn Error>> {
+pub fn execute() -> anyhow::Result<()> {
     println!("# Day 1");
     let file = fs::read("./inputs/1.txt")?;
     let file = &file[..];
