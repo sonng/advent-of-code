@@ -16,8 +16,8 @@ fn solve_part_1(input: &[u8]) -> i64 {
 
 fn convert(value: &u8) -> i64 {
     match value {
-        40 => 1,
-        41 => -1,
+        b'(' => 1,
+        b')' => -1,
         _ => 0
     }
 }
