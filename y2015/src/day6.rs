@@ -1,5 +1,4 @@
 use anyhow::Result;
-use num::{BigUint, Zero};
 use std::{cmp::max, fs};
 
 pub fn execute() -> Result<()> {
