@@ -104,13 +104,13 @@ fn solve_part_1(input: &Vec<Instruction>) -> usize {
         .sum()
 }
 
-fn solve_part_2(input: &Vec<Instruction>) -> BigUint {
-    let mut grid: Vec<Vec<BigUint>> = vec![];
+fn solve_part_2(input: &Vec<Instruction>) -> u64 {
+    let mut grid: Vec<Vec<u64>> = vec![];
 
     for i in 0..1000 {
         grid.push(vec![]);
         for _j in 0..1000 {
-            grid[i].push(BigUint::zero());
+            grid[i].push(0);
         }
     }
 
@@ -118,21 +118,21 @@ fn solve_part_2(input: &Vec<Instruction>) -> BigUint {
         for i in inst.left_bot.x..=inst.right_top.x {
             for j in inst.left_bot.y..=inst.right_top.y {
                 match inst.action {
-                    Action::ON => grid[i][j] += BigUint::from(1 as usize),
+                    Action::ON => grid[i][j] += 1,
                     Action::OFF => {
-                        if grid[i][j] == BigUint::from(0 as usize) {
-                            grid[i][j] = BigUint::from(0 as usize)
+                        if grid[i][j] == 0 {
+                            grid[i][j] = 0;
                         } else {
-                            grid[i][j] -= BigUint::from(1 as usize)
+                            grid[i][j] -= 1;
                         }
                     }
-                    Action::TOOGLE => grid[i][j] += BigUint::from(2 as usize),
+                    Action::TOOGLE => grid[i][j] += 2,
                 }
             }
         }
     });
 
-    let mut r = BigUint::zero();
+    let mut r = 0;
 
     grid.iter().for_each(|row| {
         row.iter().for_each(|col| {
