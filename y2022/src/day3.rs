@@ -63,22 +63,24 @@ fn commons(left: &[u8], right: &[u8]) -> HashSet<u8> {
     common
 }
 
+fn common_chunk(c: &[&str]) -> u8 {
+    let left = commons(c[0].as_bytes(), c[1].as_bytes());
+    let right = commons(c[1].as_bytes(), c[2].as_bytes());
+
+    for c in right.iter() {
+        if left.contains(c) {
+            return *c;
+        }
+    }
+
+    0
+}
+
 fn solve_part_2(input: &str) -> anyhow::Result<()> {
     let answer = input.split('\n').collect::<Vec<&str>>();
     let answer: u64 = answer
         .chunks_exact(3)
-        .map(|c| {
-            let left = commons(c[0].as_bytes(), c[1].as_bytes());
-            let right = commons(c[1].as_bytes(), c[2].as_bytes());
-
-            for c in right.iter() {
-                if left.contains(c) {
-                    return *c;
-                }
-            }
-
-            0
-        })
+        .map(common_chunk)
         .map(convert_to_points)
         .sum();
 
