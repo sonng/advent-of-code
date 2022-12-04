@@ -47,14 +47,12 @@ fn solve_part_1(input: &str) -> anyhow::Result<()> {
         .split('\n')
         .map(|line| {
             let split = line.split(',').collect::<Vec<&str>>();
-            vec![
+            (
                 Assignment::try_from(split[0]).unwrap(),
                 Assignment::try_from(split[1]).unwrap(),
-            ]
+            )
         })
-        .filter(|assignments| {
-            assignments[0].is_inside(&assignments[1]) || assignments[1].is_inside(&assignments[0])
-        })
+        .filter(|ass| ass.0.is_inside(&ass.1) || ass.1.is_inside(&ass.0))
         .count();
     println!("Day 4-1: {:?}", result);
     Ok(())
@@ -65,14 +63,12 @@ fn solve_part_2(input: &str) -> anyhow::Result<()> {
         .split('\n')
         .map(|line| {
             let split = line.split(',').collect::<Vec<&str>>();
-            vec![
+            (
                 Assignment::try_from(split[0]).unwrap(),
                 Assignment::try_from(split[1]).unwrap(),
-            ]
+            )
         })
-        .filter(|assignments| {
-            assignments[0].is_overlap(&assignments[1]) || assignments[1].is_overlap(&assignments[0])
-        })
+        .filter(|ass| ass.0.is_overlap(&ass.1) || ass.1.is_overlap(&ass.0))
         .count();
     println!("Day 4-2: {:?}", result);
     Ok(())
