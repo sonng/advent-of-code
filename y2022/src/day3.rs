@@ -10,7 +10,7 @@ pub fn exec() -> anyhow::Result<()> {
 fn solve_part_1(input: &str) -> anyhow::Result<()> {
     let answer: u64 = input
         .split('\n')
-        .map(|c| c.as_bytes())
+        .map(&str::as_bytes)
         .map(common_in_each_half)
         .map(convert_to_points)
         .sum();
