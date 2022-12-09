@@ -41,9 +41,23 @@ fn solve_part_1(input: &str) -> Result<()> {
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    let results = "";
+    let results: Vec<Instruction> = input
+        .split("\n")
+        .flat_map(|l| Instruction::try_from(l))
+        .collect();
 
-    println!("Day 9-2: {:?}", results);
+    let mut visited = HashSet::new();
+    let mut snake = Snake::new(10);
+
+    visited.insert(snake.tail());
+    for instruction in results {
+        for _ in 0..instruction.times() {
+            snake.move_head(instruction.direction());
+            visited.insert(snake.tail());
+        }
+    }
+
+    println!("Day 9-2: {:?}", visited.len());
     Ok(())
 }
 
@@ -159,6 +173,32 @@ impl Coord {
     }
 }
 
+#[derive(Debug)]
+struct Snake {
+    body: Vec<Coord>,
+}
+
+impl Snake {
+    fn new(size: usize) -> Self {
+        Snake {
+            body: vec![Coord::origin(); size],
+        }
+    }
+
+    fn tail(&self) -> Coord {
+        self.body.last().unwrap().clone()
+    }
+
+    fn move_head(&mut self, coord: Coord) {
+        self.body[0].move_point(coord);
+
+        for i in 1..self.body.len() {
+            let prev = &self.body[i - 1].clone();
+            self.body[i].follow_point(prev);
+        }
+    }
+}
+
 struct RopeBridge {
     head: Coord,
     tail: Coord,
@@ -173,12 +213,6 @@ impl RopeBridge {
     }
     fn new() -> Self {
         Self::new_all_coords(0, 0, 0, 0)
-    }
-
-    fn move_head(&mut self, instruction: Instruction) {
-        for _ in 0..instruction.times() {
-            self.actual_move_head(instruction.direction());
-        }
     }
 
     fn actual_move_head(&mut self, coord: Coord) {
