@@ -1,4 +1,4 @@
-use y2022::{day1, day2, day3, day4, day5, day6, day7};
+use y2022::{day1, day2, day3, day4, day5, day6, day7, day8};
 
 fn main() -> anyhow::Result<()> {
     println!("Advent of Code - 2022");
@@ -9,6 +9,7 @@ fn main() -> anyhow::Result<()> {
     day5::exec()?;
     day6::exec()?;
     day7::exec()?;
+    day8::exec()?;
 
     Ok(())
 }
