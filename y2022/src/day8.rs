@@ -48,7 +48,7 @@ fn solve_part_2(input: &str) -> Result<()> {
                         break;
                     }
                 }
-                println!("{:?},{:?} - {:?}", x, y, tmp_score);
+                // println!("{:?},{:?} - {:?}", x, y, tmp_score);
             }
 
             score *= tmp_score;
@@ -67,7 +67,7 @@ fn solve_part_2(input: &str) -> Result<()> {
                 }
             }
 
-            println!("{:?},{:?} - {:?}", x, y, tmp_score);
+            // println!("{:?},{:?} - {:?}", x, y, tmp_score);
             score *= tmp_score;
             // up
             let mut tmp_score = 0;
@@ -83,7 +83,7 @@ fn solve_part_2(input: &str) -> Result<()> {
                 }
             }
 
-            println!("{:?},{:?} - {:?}", x, y, tmp_score);
+            // println!("{:?},{:?} - {:?}", x, y, tmp_score);
             score *= tmp_score;
             // down
             let mut tmp_score = 0;
@@ -99,7 +99,7 @@ fn solve_part_2(input: &str) -> Result<()> {
                 }
             }
 
-            println!("{:?},{:?} - {:?}", x, y, tmp_score);
+            // println!("{:?},{:?} - {:?}", x, y, tmp_score);
             score *= tmp_score;
 
             scores.push(score);
@@ -107,7 +107,7 @@ fn solve_part_2(input: &str) -> Result<()> {
 
         total_scores.push(scores);
     }
-    println!("{:?}", total_scores);
+    // println!("{:?}", total_scores);
 
     let results = total_scores
         .iter()
