@@ -1,15 +1,8 @@
-use std::{collections::HashSet, fs, num::ParseIntError};
+use std::{collections::HashSet, fs};
 
 use anyhow::Result;
-use thiserror::Error;
 
-#[derive(Error, Debug)]
-enum Errors {
-    #[error("Parsing Error: `{0}`")]
-    ParseError(String),
-    #[error("Parsing Int Error: `{0}`")]
-    ParseIntError(#[from] ParseIntError),
-}
+use crate::Errors;
 
 pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day9.txt")?;
