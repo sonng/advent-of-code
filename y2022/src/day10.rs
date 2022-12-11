@@ -7,7 +7,7 @@ use crate::Errors;
 pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day10.txt")?;
 
-    solve_part_1(&input)?;
+    // solve_part_1(&input)?;
     solve_part_2(&input)?;
 
     Ok(())
@@ -58,6 +58,8 @@ fn solve_part_2(input: &str) -> Result<()> {
         match stage {
             Stage::During(step, value) => {
                 crt_1.borrow_mut().plot(step as i64);
+            }
+            Stage::EndOfCycle(step, value) => {
                 crt_2.borrow_mut().move_sprite(value);
             }
             _ => {}
@@ -208,7 +210,7 @@ impl CRT {
             return;
         }
 
-        let step = step as i64;
+        let step = step % self.width as i64;
         if self.cursor_on_position(step) {
             println!("Drawing #: {:?}", self.position);
 
