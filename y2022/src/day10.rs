@@ -7,7 +7,7 @@ use crate::Errors;
 pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day10.txt")?;
 
-    // solve_part_1(&input)?;
+    solve_part_1(&input)?;
     solve_part_2(&input)?;
 
     Ok(())
@@ -37,7 +37,7 @@ fn solve_part_1(input: &str) -> Result<()> {
             _ => {}
         },
     );
-    println!("Results: {:?}", results);
+    // println!("Results: {:?}", results);
     println!("Day 10-1: {:?}", results.iter().sum::<i64>());
     Ok(())
 }
@@ -54,23 +54,19 @@ fn solve_part_2(input: &str) -> Result<()> {
     let crt_1 = Rc::clone(&crt);
     let crt_2 = Rc::clone(&crt);
 
-    cpu.exec(instructions.into_iter().rev().collect(), 40 * 6, |stage| {
-        match stage {
-            Stage::During(step, value) => {
+    cpu.exec(
+        instructions.into_iter().rev().collect(),
+        40 * 6,
+        |stage| match stage {
+            Stage::During(step, _value) => {
                 crt_1.borrow_mut().plot(step as i64);
             }
-            Stage::EndOfCycle(step, value) => {
+            Stage::EndOfCycle(_step, value) => {
                 crt_2.borrow_mut().move_sprite(value);
             }
             _ => {}
-        }
-        // println!(
-        //     "DURING: s:{:?} r: {:?} = {:?}",
-        //     step + 1,
-        //     value,
-        //     "" // (step + 1) as i64 * value
-        // );
-    });
+        },
+    );
 
     crt.borrow().print();
     println!("Day 10-2: {:?}", "");
@@ -131,47 +127,43 @@ impl CPU {
             callback(Stage::Start(i, self.register));
 
             if pending_instruction.is_none() {
-                print!("Start cycle {}: begin executing ", i);
+                // print!("Start cycle {}: begin executing ", i);
                 if let Some(instruction) = instructions.pop() {
                     match instruction {
                         Instruction::Noop => {
-                            println!("noop");
+                            // println!("noop");
                         }
                         Instruction::Addx(value) => {
-                            println!("addx {}", value);
+                            // println!("addx {}", value);
                             pending_instruction = Some((i + 1, instruction.clone()));
                         }
                     }
                 } else {
-                    println!("no instructions left!");
+                    // println!("no instructions left!");
                 }
-                println!("During cycle {}", i);
+                // println!("During cycle {}", i);
                 callback(Stage::During(i, self.register));
-                println!("End of cycle {}: finish executing", i);
+                // println!("End of cycle {}: finish executing", i);
             } else if let Some((when, instruction)) = pending_instruction {
-                println!("During cycle {}", i);
+                // println!("During cycle {}", i);
                 callback(Stage::During(i, self.register));
-                print!("End of cycle {}: finish executing ", i);
+                // print!("End of cycle {}: finish executing ", i);
                 if i == when {
                     match instruction {
                         Instruction::Noop => {
-                            println!("Should never get here!");
+                            // println!("Should never get here!");
                         }
                         Instruction::Addx(value) => {
                             self.register += value;
-                            println!("addx {} (Register X is now {}", value, self.register);
-                            // println!(
-                            //     "{:?}-{:?}: Executed {:?} -- {:?} -> {:?}",
-                            //     i, self.register, when, value, self.register
-                            // );
+                            // println!("addx {} (Register X is now {}", value, self.register);
                         }
                     }
                     pending_instruction = None;
                 } else {
-                    println!("noop");
+                    // println!("noop");
                 }
             } else {
-                println!("{:?}: Outta instructions", i);
+                // println!("{:?}: Outta instructions", i);
                 break;
             }
             callback(Stage::EndOfCycle(i, self.register));
@@ -212,11 +204,10 @@ impl CRT {
 
         let step = step % self.width as i64;
         if self.cursor_on_position(step) {
-            println!("Drawing #: {:?}", self.position);
-
+            // println!("Drawing #: {:?}", self.position);
             self.display.push(b'#');
         } else {
-            println!("Drawing .: {:?}", self.position);
+            // println!("Drawing .: {:?}", self.position);
             self.display.push(b'.');
         }
     }
