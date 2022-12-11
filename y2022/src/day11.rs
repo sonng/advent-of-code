@@ -1,4 +1,9 @@
-use std::fs;
+use std::{
+    cell::RefCell,
+    collections::{HashMap, VecDeque},
+    fs,
+    rc::Rc,
+};
 
 use anyhow::Result;
 
@@ -16,7 +21,24 @@ fn solve_part_1(input: &str) -> Result<()> {
         .split("\n\n")
         .filter_map(|c| Monkey::try_from(c).ok())
         .collect();
-    println!("Day 11-1: {:?}", monkeys);
+
+    let monkeys: Vec<Rc<RefCell<Monkey>>> = monkeys
+        .iter()
+        .map(|m| Rc::new(RefCell::new(m.clone())))
+        .collect();
+    let mut monkey_mapping = HashMap::<String, Rc<RefCell<Monkey>>>::new();
+
+    for m in &monkeys {
+        monkey_mapping.insert(m.borrow().name.to_owned(), Rc::clone(m));
+    }
+
+    let mut inspect_count = HashMap::new();
+
+    for _ in 0..20 {
+        play_round(&monkeys, &mut monkey_mapping, &mut inspect_count);
+    }
+
+    println!("Day 11-1: {:?}", inspect_count);
     Ok(())
 }
 
@@ -25,25 +47,26 @@ fn solve_part_2(input: &str) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Monkey {
     name: String,
-    items: Vec<usize>,
+    items: VecDeque<usize>,
     operation: Operation,
     test: Test,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Test {
     divisible: usize,
     true_case: usize,
     false_case: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 enum Operation {
     Add(usize),
     Multiply(usize),
+    Squared,
 }
 
 const NAME_INDEX: usize = 0;
@@ -58,7 +81,7 @@ impl TryFrom<&str> for Operation {
         let split: Vec<&str> = value.trim().split(' ').collect();
 
         let value = if split[5] == "old" {
-            2
+            return Ok(Operation::Squared);
         } else {
             split[5].parse()?
         };
@@ -72,6 +95,16 @@ impl TryFrom<&str> for Operation {
                 }
             }
             _ => Err(Errors::ParseError("Operation parse error".into())),
+        }
+    }
+}
+
+impl Operation {
+    fn act(&self, value: usize) -> usize {
+        match self {
+            Self::Add(i) => value + i,
+            Self::Multiply(i) => value * i,
+            Self::Squared => value * value,
         }
     }
 }
@@ -125,7 +158,7 @@ impl TryFrom<&str> for Monkey {
         let items = split[ITEMS_INDEX].split(':').collect::<Vec<&str>>()[1]
             .split(',')
             .filter_map(|n| n.trim().parse::<usize>().ok())
-            .collect::<Vec<usize>>();
+            .collect::<VecDeque<usize>>();
 
         let operation = Operation::try_from(split[OPERATION_INDEX])?;
 
@@ -139,5 +172,61 @@ impl TryFrom<&str> for Monkey {
             operation,
             test,
         })
+    }
+}
+
+fn play_round(
+    monkeys: &Vec<Rc<RefCell<Monkey>>>,
+    mapping: &mut HashMap<String, Rc<RefCell<Monkey>>>,
+    inspect_count: &mut HashMap<String, usize>,
+) {
+    for monkey in monkeys {
+        play_monkey(Rc::clone(&monkey), mapping, inspect_count);
+    }
+}
+
+fn play_monkey(
+    monkey: Rc<RefCell<Monkey>>,
+    mapping: &mut HashMap<String, Rc<RefCell<Monkey>>>,
+    inspect_count: &mut HashMap<String, usize>,
+) {
+    let operation = monkey.borrow().operation;
+    let true_case = format!("{}", monkey.borrow().test.true_case);
+    let false_case = format!("{}", monkey.borrow().test.false_case);
+    let divisible = monkey.borrow().test.divisible;
+    let name = monkey.borrow().name.clone();
+
+    while let Some(item) = monkey.borrow_mut().items.pop_front() {
+        inspect_count
+            .entry(name.clone())
+            .and_modify(|count| {
+                *count += 1;
+            })
+            .or_insert(1);
+
+        // println!("Monkey inspects an item with worry level of {}", item);
+        let item = operation.act(item);
+        // println!("Worry level is {:?} to {}", operation, item);
+        let item = item / 3;
+        // println!(
+        //     "Monkey gets bored with item. Worry level is divided by 3 to {}",
+        //     item
+        // );
+
+        let toss_to = if item % divisible == 0 {
+            // println!("Current worry level is divisible by {}", divisible);
+            true_case.clone()
+        } else {
+            // println!("Current worry level is not divisible by {}", divisible);
+            false_case.clone()
+        };
+
+        // println!(
+        //     "Item with worry level {} is thrown to monkey {}",
+        //     item, toss_to
+        // );
+        mapping.entry(toss_to).and_modify(|m| {
+            m.borrow_mut().items.push_back(item);
+        });
     }
 }
