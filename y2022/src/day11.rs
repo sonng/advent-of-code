@@ -35,7 +35,7 @@ fn solve_part_1(input: &str) -> Result<()> {
     let mut inspect_count = HashMap::new();
 
     for _ in 0..20 {
-        play_round(&monkeys, &mut monkey_mapping, &mut inspect_count);
+        play_round(&monkeys, &mut monkey_mapping, &mut inspect_count, 3);
     }
 
     println!("Day 11-1: {:?}", inspect_count);
@@ -43,7 +43,32 @@ fn solve_part_1(input: &str) -> Result<()> {
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 11-2: {:}", "");
+    let monkeys: Vec<Monkey> = input
+        .split("\n\n")
+        .filter_map(|c| Monkey::try_from(c).ok())
+        .collect();
+
+    let monkeys: Vec<Rc<RefCell<Monkey>>> = monkeys
+        .iter()
+        .map(|m| Rc::new(RefCell::new(m.clone())))
+        .collect();
+    let mut monkey_mapping = HashMap::<String, Rc<RefCell<Monkey>>>::new();
+
+    for m in &monkeys {
+        monkey_mapping.insert(m.borrow().name.to_owned(), Rc::clone(m));
+    }
+
+    let mut inspect_count = HashMap::new();
+    let relief = monkeys
+        .iter()
+        .map(|m| m.borrow().divisor())
+        .fold(1, |acc, i| acc * i);
+
+    for _ in 0..10000 {
+        play_round(&monkeys, &mut monkey_mapping, &mut inspect_count, relief);
+    }
+
+    println!("Day 11-2: {:?}", inspect_count);
     Ok(())
 }
 
@@ -179,9 +204,10 @@ fn play_round(
     monkeys: &Vec<Rc<RefCell<Monkey>>>,
     mapping: &mut HashMap<String, Rc<RefCell<Monkey>>>,
     inspect_count: &mut HashMap<String, usize>,
+    relief: usize,
 ) {
     for monkey in monkeys {
-        play_monkey(Rc::clone(&monkey), mapping, inspect_count);
+        play_monkey(Rc::clone(&monkey), mapping, inspect_count, relief);
     }
 }
 
@@ -189,6 +215,7 @@ fn play_monkey(
     monkey: Rc<RefCell<Monkey>>,
     mapping: &mut HashMap<String, Rc<RefCell<Monkey>>>,
     inspect_count: &mut HashMap<String, usize>,
+    relief: usize,
 ) {
     let operation = monkey.borrow().operation;
     let true_case = format!("{}", monkey.borrow().test.true_case);
@@ -207,7 +234,7 @@ fn play_monkey(
         // println!("Monkey inspects an item with worry level of {}", item);
         let item = operation.act(item);
         // println!("Worry level is {:?} to {}", operation, item);
-        let item = item / 3;
+        let item = item % relief;
         // println!(
         //     "Monkey gets bored with item. Worry level is divided by 3 to {}",
         //     item
@@ -228,5 +255,11 @@ fn play_monkey(
         mapping.entry(toss_to).and_modify(|m| {
             m.borrow_mut().items.push_back(item);
         });
+    }
+}
+
+impl Monkey {
+    fn divisor(&self) -> usize {
+        self.test.divisible
     }
 }
