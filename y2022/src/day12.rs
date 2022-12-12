@@ -16,7 +16,7 @@ pub fn exec() -> Result<()> {
 }
 
 struct Puzzle {
-    start: Coord,
+    start: Vec<Coord>,
     end: Coord,
     maze: Vec<Vec<u8>>,
 }
@@ -30,20 +30,19 @@ impl TryFrom<&str> for Puzzle {
             .map(|l| l.as_bytes().iter().map(|c| *c).collect())
             .collect();
 
-        let mut start = None;
+        let mut start = vec![];
         let mut end = None;
 
         for y in 0..maze.len() {
             for x in 0..maze[y].len() {
                 match maze[y][x] {
-                    b'S' => start = Option::Some(Coord::new(x as i64, y as i64)),
+                    b'S' | b'a' => start.push(Coord::new(x as i64, y as i64)),
                     b'E' => end = Option::Some(Coord::new(x as i64, y as i64)),
                     _ => {}
                 }
             }
         }
 
-        let start = start.ok_or(Errors::ParseError("Could not find start".into()))?;
         let end = end.ok_or(Errors::ParseError("Could not find end".into()))?;
 
         Ok(Puzzle { start, end, maze })
@@ -53,23 +52,31 @@ impl TryFrom<&str> for Puzzle {
 fn solve_part_1(input: &str) -> Result<()> {
     let puzzle = Puzzle::try_from(input)?;
 
-    println!("Day 12-1: {:?}", puzzle.shortest_distance());
+    println!("Day 12-1: {:?}", puzzle.shortest_distance(puzzle.start[0]));
     Ok(())
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 12-2: {:?}", "");
+    let puzzle = Puzzle::try_from(input)?;
+
+    let distances = puzzle
+        .start
+        .iter()
+        .filter_map(|s| puzzle.shortest_distance(*s))
+        .min();
+
+    println!("Day 12-2: {:?}", distances.unwrap());
     Ok(())
 }
 
 impl Puzzle {
-    fn shortest_distance(&self) -> Option<usize> {
+    fn shortest_distance(&self, start: Coord) -> Option<usize> {
         let mut queue = VecDeque::new();
         let mut steps = 0;
 
         let mut visited = HashSet::new();
 
-        queue.push_back(self.start);
+        queue.push_back(start);
 
         while !queue.is_empty() {
             let to_deplete = queue.len();
