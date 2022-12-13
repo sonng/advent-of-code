@@ -1,4 +1,4 @@
-use std::{fs, iter::zip};
+use std::fs;
 
 use anyhow::Result;
 
@@ -29,7 +29,28 @@ fn solve_part_1(input: &str) -> Result<()> {
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 13-2: {:?}", "");
+    let packets: Vec<&str> = input
+        .split("\n\n")
+        .flat_map(|c| c.split('\n').collect::<Vec<&str>>())
+        .collect();
+
+    let mut packets: Vec<Packet> = packets
+        .iter()
+        .filter_map(|s| Packet::try_from(*s).ok())
+        .collect();
+
+    let first_divider = Packet::divider(2);
+    let second_divider = Packet::divider(6);
+
+    packets.push(first_divider.clone());
+    packets.push(second_divider.clone());
+
+    packets.sort();
+
+    let first_index = packets.binary_search(&first_divider).unwrap();
+    let second_index = packets.binary_search(&second_divider).unwrap();
+
+    println!("Day 13-2: {:?}", (first_index + 1) * (second_index + 1));
     Ok(())
 }
 
@@ -69,6 +90,10 @@ impl Packet {
 
     fn new_list() -> Self {
         Packet::List(vec![])
+    }
+
+    fn divider(value: usize) -> Self {
+        Packet::List(vec![Packet::List(vec![Packet::Value(value)])])
     }
 
     fn insert_list(&mut self, other: Packet) {
