@@ -25,14 +25,27 @@ fn solve_part_1(input: &str) -> Result<()> {
         results += 1;
     }
 
-    println!("{}", cave.to_string());
-
     println!("Day 14-1: {}", results);
     Ok(())
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 14-2: {:?}", "");
+    let lines: Vec<Line> = input
+        .split('\n')
+        .filter_map(|l| Coords::try_from(l).ok())
+        .flat_map(map_coords_to_lines)
+        .collect();
+
+    let mut cave = Cave::from(lines);
+
+    cave.with_buffer(500);
+
+    let mut results = 1;
+    while cave.drop_sand(Coord::new(999, 0)) {
+        results += 1;
+    }
+
+    println!("Day 14-2: {:?}", results);
     Ok(())
 }
 
@@ -119,7 +132,7 @@ impl TryFrom<&str> for Coord {
             return Err(Errors::ParseError("Issues parsing coords".into()));
         }
 
-        Ok(Coord::new(value[0] - 1, value[1] - 1))
+        Ok(Coord::new(value[0] - 1, value[1]))
     }
 }
 
@@ -273,6 +286,10 @@ impl Cave {
             break;
         }
 
+        if sand == from {
+            return false;
+        }
+
         return true;
     }
 
@@ -289,5 +306,30 @@ impl Cave {
 
     fn is_taken(&self, coord: Coord) -> bool {
         self.map[coord.y as usize][coord.x as usize] != Unit::Air
+    }
+
+    fn with_buffer(&mut self, buffer: usize) {
+        let mut new_map = vec![];
+        for row in self.map.iter() {
+            let mut new_row = vec![];
+            for _ in 0..buffer {
+                new_row.push(Unit::Air);
+            }
+            for u in row.iter() {
+                new_row.push(*u);
+            }
+            for _ in 0..buffer {
+                new_row.push(Unit::Air);
+            }
+            new_map.push(new_row);
+        }
+
+        let empty_row = vec![Unit::Air; new_map[0].len()];
+        let ground_row = vec![Unit::Rock; new_map[0].len()];
+
+        new_map.push(empty_row);
+        new_map.push(ground_row);
+
+        self.map = new_map;
     }
 }
