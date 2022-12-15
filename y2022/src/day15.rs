@@ -45,34 +45,57 @@ fn solve_part_2(input: &str) -> Result<()> {
         .filter_map(|s| SensorDeployment::try_from(s).ok())
         .collect();
 
-    let min_x = deployments.iter().map(|d| d.sensor.x).min().unwrap();
+    let min_x = 0;
     let min_y = deployments.iter().map(|d| d.sensor.y).min().unwrap();
-    let max_x = deployments.iter().map(|d| d.sensor.x).max().unwrap();
+    let max_x = 4000000;
     let max_y = deployments.iter().map(|d| d.sensor.y).max().unwrap();
 
     let mut row_ranges: HashMap<isize, Vec<RangeInclusive<isize>>> = HashMap::new();
-    for i in min_y..=max_y {
+    for i in 0..=4000000 {
         let ranges: Vec<RangeInclusive<isize>> = deployments
             .iter()
             .filter_map(|d| d.get_range_for_row(i))
             .collect();
         let ranges = merge_ranges(ranges);
-        row_ranges.insert(i, ranges);
-    }
-
-    let mut missed_spots = HashSet::new();
-    for x in min_x..max_x {
-        for y in min_y..max_y {
-            if let Some(ranges) = row_ranges.get(&y) {
-                if !ranges.iter().any(|r| r.contains(&x)) {
-                    missed_spots.insert(Coord::new(x, y));
-                }
-            }
+        let ranges = normalize_ranges(ranges, min_x, max_x);
+        if ranges.len() == 2 {
+            row_ranges.insert(i, ranges);
         }
     }
 
-    println!("Day 15-2: {:?}", missed_spots);
+    // let mut missed_spots = HashSet::new();
+    // for x in min_x..max_x {
+    //     for y in min_y..max_y {
+    //         if let Some(ranges) = row_ranges.get(&y) {
+    //             if !ranges.iter().any(|r| r.contains(&x)) {
+    //                 missed_spots.insert(Coord::new(x, y));
+    //             }
+    //         }
+    //     }
+    // }
+
+    let key = row_ranges.keys().last().unwrap();
+    let value = row_ranges.get(key).unwrap();
+    let value = value[0].end() + 1;
+
+    println!("Day 15-2: {:?}", value * 4000000 + key);
     Ok(())
+}
+
+fn normalize_ranges(
+    ranges: Vec<RangeInclusive<isize>>,
+    lower_bound: isize,
+    higher_bound: isize,
+) -> Vec<RangeInclusive<isize>> {
+    ranges
+        .iter()
+        .filter(|r| !(*r.end() < lower_bound || *r.start() > higher_bound))
+        .map(|r| {
+            let start = max(*r.start(), lower_bound);
+            let end = min(*r.end(), higher_bound);
+            start..=end
+        })
+        .collect()
 }
 
 fn merge_ranges(ranges: Vec<RangeInclusive<isize>>) -> Vec<RangeInclusive<isize>> {
@@ -211,22 +234,26 @@ impl SensorDeployment {
 
             let direction = self.sensor.direction_towards(&self.beacon);
 
-            let mut coord = self.sensor;
-            coord.x += direction.x;
+            let x_axis = (self.sensor.x - self.beacon.x).abs();
+            let y_axis = (self.sensor.y - self.beacon.y).abs();
 
-            while !coord.is_on_the_diag(&self.beacon) {
-                coord.x += direction.x;
-            }
-            size = max(size, (self.sensor.x - coord.x).abs());
+            y_axis + x_axis
+            // let mut coord = self.sensor;
+            // coord.x += direction.x;
 
-            let mut coord = self.sensor;
-            coord.y += direction.y;
-            while !coord.is_on_the_diag(&self.beacon) {
-                coord.y += direction.y;
-            }
-            size = max(size, (self.sensor.y - coord.y).abs());
+            // while !coord.is_on_the_diag(&self.beacon) {
+            //     coord.x += direction.x;
+            // }
+            // size = max(size, (self.sensor.x - coord.x).abs());
 
-            size
+            // let mut coord = self.sensor;
+            // coord.y += direction.y;
+            // while !coord.is_on_the_diag(&self.beacon) {
+            //     coord.y += direction.y;
+            // }
+            // size = max(size, (self.sensor.y - coord.y).abs());
+
+            // size
         }
     }
 }
