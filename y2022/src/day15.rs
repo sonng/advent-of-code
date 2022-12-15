@@ -1,6 +1,6 @@
 use std::{
     cmp::{max, min},
-    collections::HashSet,
+    collections::{HashMap, HashSet},
     fs,
     ops::RangeInclusive,
 };
@@ -12,7 +12,7 @@ use crate::{Coord, Errors};
 pub fn exec() -> Result<()> {
     let input = fs::read_to_string("/Users/son/workspace/rust-aoc/y2022/inputs/day15.txt")?;
     solve_part_1(&input)?;
-    // solve_part_2(&input)?;
+    solve_part_2(&input)?;
     Ok(())
 }
 
@@ -50,19 +50,23 @@ fn solve_part_2(input: &str) -> Result<()> {
     let max_x = deployments.iter().map(|d| d.sensor.x).max().unwrap();
     let max_y = deployments.iter().map(|d| d.sensor.y).max().unwrap();
 
-    let all_spots: HashSet<Coord> = deployments.iter().flat_map(|d| d.get_diamond()).collect();
+    let mut row_ranges: HashMap<isize, Vec<RangeInclusive<isize>>> = HashMap::new();
+    for i in min_y..=max_y {
+        let ranges: Vec<RangeInclusive<isize>> = deployments
+            .iter()
+            .filter_map(|d| d.get_range_for_row(i))
+            .collect();
+        let ranges = merge_ranges(ranges);
+        row_ranges.insert(i, ranges);
+    }
 
     let mut missed_spots = HashSet::new();
-    for x in 0..20 {
-        for y in 0..20 {
-            let point = Coord::new(x as isize, y as isize);
-            if !all_spots.contains(&point)
-                && point.x >= min_x
-                && point.x <= max_x
-                && point.y >= min_y
-                && point.y <= max_y
-            {
-                missed_spots.insert(point);
+    for x in min_x..max_x {
+        for y in min_y..max_y {
+            if let Some(ranges) = row_ranges.get(&y) {
+                if !ranges.iter().any(|r| r.contains(&x)) {
+                    missed_spots.insert(Coord::new(x, y));
+                }
             }
         }
     }
@@ -208,12 +212,15 @@ impl SensorDeployment {
             let direction = self.sensor.direction_towards(&self.beacon);
 
             let mut coord = self.sensor;
+            coord.x += direction.x;
+
             while !coord.is_on_the_diag(&self.beacon) {
                 coord.x += direction.x;
             }
             size = max(size, (self.sensor.x - coord.x).abs());
 
             let mut coord = self.sensor;
+            coord.y += direction.y;
             while !coord.is_on_the_diag(&self.beacon) {
                 coord.y += direction.y;
             }
@@ -360,6 +367,16 @@ mod test {
         };
 
         assert_eq!(deployment.get_range_for_row(3), Some(15..=17));
+    }
+
+    #[test]
+    fn test_weird_bug_for_range() {
+        let deployment = SensorDeployment {
+            sensor: Coord::new(12, 14),
+            beacon: Coord::new(10, 16),
+        };
+
+        assert_eq!(deployment.get_range_for_row(13), Some(9..=15));
     }
 
     #[test]
