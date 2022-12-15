@@ -2,7 +2,7 @@ use std::{cmp::max, fs};
 
 use anyhow::Result;
 
-use crate::Errors;
+use crate::{Coord, Errors};
 
 pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day14.txt")?;
@@ -73,48 +73,6 @@ impl From<Vec<Line>> for Cave {
         }
 
         Cave { map }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-struct Coord {
-    x: isize,
-    y: isize,
-}
-
-impl Coord {
-    fn new(x: isize, y: isize) -> Self {
-        Coord { x, y }
-    }
-
-    fn add(&self, other: &Coord) -> Coord {
-        Coord {
-            x: self.x + other.x,
-            y: self.y + other.y,
-        }
-    }
-
-    fn direction_towards(&self, other: &Coord) -> Coord {
-        Coord {
-            x: if self.x == other.x {
-                0
-            } else {
-                if self.x < other.x {
-                    1
-                } else {
-                    -1
-                }
-            },
-            y: if self.y == other.y {
-                0
-            } else {
-                if self.y < other.y {
-                    1
-                } else {
-                    -1
-                }
-            },
-        }
     }
 }
 
