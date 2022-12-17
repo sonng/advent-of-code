@@ -53,7 +53,7 @@ fn solve_part_1(input: &str) -> Result<()> {
         let cur_position = state.path.last().unwrap_or(&initial);
 
         if state.to_open.is_empty() || cur_position.0 >= MAX_TIME {
-            max_score = max(max_score, scoree(&state.path, &mapping, MAX_TIME));
+            max_score = max(max_score, scoree(state.path.iter(), &mapping, MAX_TIME));
             continue;
         }
 
@@ -100,32 +100,27 @@ fn solve_part_2(input: &str) -> Result<()> {
         .map(|v| v.name.as_str())
         .collect();
 
-    let all_paths = generate_all_paths(
+    let mut all_paths = generate_all_paths(
         to_open,
         MAX_TIME,
+        &mapping,
         &connected_mapping,
         &mut memorized_mapping,
     );
+    all_paths.sort();
     println!("Paths: {}", all_paths.len());
     let mut max_score = 0;
     for person in &all_paths {
         for elephant in &all_paths {
-            if !person.is_disjoint(&elephant) {
+            if !person.0.is_disjoint(&elephant.0) {
                 continue;
             }
 
-            let person_score = scoree(
-                &person.into_iter().map(|c| c.clone()).collect(),
-                &mapping,
-                MAX_TIME,
-            );
-            let elephant_score = scoree(
-                &elephant.into_iter().map(|c| c.clone()).collect(),
-                &mapping,
-                MAX_TIME,
-            );
-
-            max_score = max(max_score, person_score + elephant_score);
+            let score = person.1 + elephant.1;
+            if score > max_score {
+                println!("S: {}", score);
+                max_score = score;
+            }
         }
     }
 
@@ -171,10 +166,12 @@ impl From<&str> for Valve {
     }
 }
 
-fn scoree(timings: &Vec<ValveOpen>, mapping: &HashMap<String, Valve>, max_time: usize) -> usize {
+fn scoree<'a, I>(timings: I, mapping: &HashMap<String, Valve>, max_time: usize) -> usize
+where
+    I: Iterator<Item = &'a ValveOpen>,
+{
     timings
-        .iter()
-        .map(|timing| calculate_released_flow(timing, mapping, max_time))
+        .map(|timing| calculate_released_flow(&timing, mapping, max_time))
         .sum::<usize>()
 }
 
@@ -235,6 +232,29 @@ struct StateWithTakeTime<'a> {
 }
 
 #[derive(Debug, Clone)]
+struct PathWithScore(HashSet<ValveOpen>, usize);
+
+impl Ord for PathWithScore {
+    fn cmp(&self, other: &Self) -> Ordering {
+        other.1.cmp(&self.1)
+    }
+}
+
+impl PartialOrd for PathWithScore {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        other.1.partial_cmp(&self.1)
+    }
+}
+
+impl PartialEq for PathWithScore {
+    fn eq(&self, other: &Self) -> bool {
+        other.1 == self.1
+    }
+}
+
+impl Eq for PathWithScore {}
+
+#[derive(Debug, Clone)]
 struct ValveOpen(usize, String);
 
 impl Hash for ValveOpen {
@@ -251,13 +271,14 @@ impl PartialEq for ValveOpen {
 
 impl Eq for ValveOpen {}
 
-fn generate_all_paths<'a>(
+fn generate_all_paths(
     options: HashSet<&str>,
     max_time: usize,
-    mapping: &'a HashMap<&'a str, Vec<String>>,
-    memorized_mapping: &'a mut HashMap<String, Vec<String>>,
-) -> Vec<HashSet<ValveOpen>> {
-    let mut all_paths: Vec<HashSet<ValveOpen>> = vec![];
+    mapping: &HashMap<String, Valve>,
+    connection_mapping: &HashMap<&str, Vec<String>>,
+    memorized_mapping: &mut HashMap<String, Vec<String>>,
+) -> Vec<PathWithScore> {
+    let mut all_paths: Vec<PathWithScore> = vec![];
 
     let initial = ValveOpen(0, "AA".to_string());
 
@@ -274,7 +295,9 @@ fn generate_all_paths<'a>(
             let state = wip.pop_front().unwrap();
 
             if !state.path.is_empty() {
-                all_paths.push(HashSet::from_iter(state.path.iter().map(|m| m.clone())));
+                let path = HashSet::from_iter(state.path.iter().map(|m| m.clone()));
+                let score = scoree(path.iter(), mapping, max_time);
+                all_paths.push(PathWithScore(path, score));
             }
 
             if state.time_so_far >= max_time {
@@ -285,7 +308,7 @@ fn generate_all_paths<'a>(
             let difference = options.difference(&state.visited);
 
             for option in difference.into_iter() {
-                let path = find_shortest_path(&cur, option, mapping, memorized_mapping);
+                let path = find_shortest_path(&cur, option, connection_mapping, memorized_mapping);
                 let mut new_state = state.clone();
                 new_state.time_so_far += path.len();
                 new_state
