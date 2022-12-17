@@ -10,7 +10,7 @@ pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day16.txt")?;
     let example_input = fs::read_to_string("./inputs/day16_example.txt")?;
     solve_part_1(&example_input)?;
-    solve_part_1(&input)?;
+    // solve_part_1(&input)?;
     solve_part_2(&example_input)?;
     solve_part_2(&input)?;
     Ok(())
@@ -36,15 +36,16 @@ fn solve_part_1(input: &str) -> Result<()> {
 
     let mut check_queue: Vec<PathState> = vec![PathState {
         path: vec![],
-        visited: HashSet::new(),
+        elephant: vec![],
         to_open,
-        time: 0,
     }];
 
     let mut max_score = 0;
 
     while let Some(state) = check_queue.pop() {
-        if state.to_open.is_empty() || state.time >= MAX_TIME {
+        let cur_position = state.path.last().unwrap_or(&(0, "AA"));
+
+        if state.to_open.is_empty() || cur_position.0 >= MAX_TIME {
             max_score = max(
                 max_score,
                 calculate_complete_released_flow(&state.path, &mapping, MAX_TIME),
@@ -56,7 +57,6 @@ fn solve_part_1(input: &str) -> Result<()> {
         for valve_to_open in state.to_open {
             let mut new_state = temp.clone();
 
-            let cur_position = new_state.path.last().unwrap_or(&(0, "AA"));
             let shortest_path = find_shortest_path(
                 cur_position.1,
                 valve_to_open,
@@ -64,13 +64,10 @@ fn solve_part_1(input: &str) -> Result<()> {
                 &mut memorized_mapping,
             );
 
-            // Travel there
-            new_state.time += shortest_path.len() - 1;
-            new_state.visited.insert(valve_to_open);
-            // Open it
-            new_state.time += 1;
             new_state.to_open.remove(valve_to_open);
-            new_state.path.push((new_state.time, valve_to_open));
+            new_state
+                .path
+                .push((cur_position.0 + shortest_path.len(), valve_to_open));
 
             check_queue.push(new_state);
         }
@@ -81,8 +78,93 @@ fn solve_part_1(input: &str) -> Result<()> {
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 16-2: {}", "");
+    let valves: Vec<Valve> = input.split('\n').map(|l| Valve::from(l)).collect();
+    let mut mapping: HashMap<&str, Valve> = HashMap::new();
+    let mut connected_mapping: HashMap<&str, Vec<String>> = HashMap::new();
+    let mut memorized_mapping: HashMap<String, Vec<String>> = HashMap::new();
+
+    valves.iter().for_each(|v| {
+        mapping.insert(&v.name, v.clone());
+        connected_mapping.insert(&v.name, v.connected.clone());
+    });
+
+    const MAX_TIME: usize = 26;
+    let to_open: HashSet<&str> = valves
+        .iter()
+        .filter(|v| v.flow != 0)
+        .map(|v| v.name.as_str())
+        .collect();
+
+    let mut check_queue: Vec<PathState> = vec![PathState {
+        path: vec![],
+        elephant: vec![],
+        to_open,
+    }];
+
+    let mut max_score = 0;
+
+    while let Some(state) = check_queue.pop() {
+        let cur_position = state.path.last().unwrap_or(&(0, "AA"));
+        let ele_cur_position = state.elephant.last().unwrap_or(&(0, "AA"));
+        if state.to_open.is_empty()
+            || (cur_position.0 >= MAX_TIME && ele_cur_position.0 >= MAX_TIME)
+        {
+            let you_score = calculate_complete_released_flow(&state.path, &mapping, MAX_TIME);
+            let elephant_score =
+                calculate_complete_released_flow(&state.elephant, &mapping, MAX_TIME);
+            max_score = max(max_score, you_score + elephant_score);
+            continue;
+        }
+
+        let temp = state.clone();
+        for valve_to_open in state.to_open {
+            // Find shortest path for player
+            let mut new_state = temp.clone();
+            // Move and open it
+            process(
+                cur_position,
+                valve_to_open,
+                &mut new_state.to_open,
+                &mut new_state.path,
+                &connected_mapping,
+                &mut memorized_mapping,
+            );
+            // Push it onto next
+            check_queue.push(new_state);
+            // Find shortest path for elephant
+            let mut new_state = temp.clone();
+            // Move it and open it
+            process(
+                ele_cur_position,
+                valve_to_open,
+                &mut new_state.to_open,
+                &mut new_state.elephant,
+                &connected_mapping,
+                &mut memorized_mapping,
+            );
+            // Push it onto next
+            check_queue.push(new_state);
+        }
+    }
+
+    println!("Day 16-2: {}", max_score);
     Ok(())
+}
+
+fn process<'a>(
+    cur_position: &(usize, &str),
+    destination: &'a str,
+    to_open: &mut HashSet<&str>,
+    path: &mut Vec<(usize, &'a str)>,
+    mapping: &'a HashMap<&'a str, Vec<String>>,
+    memorized_mapping: &mut HashMap<String, Vec<String>>,
+) {
+    let shortest_path =
+        find_shortest_path(cur_position.1, destination, &mapping, memorized_mapping);
+
+    // Open it
+    to_open.remove(destination);
+    path.push((cur_position.0 + shortest_path.len(), destination));
 }
 
 #[derive(Debug, Clone)]
@@ -152,9 +234,8 @@ fn calculate_released_flow(
 #[derive(Clone)]
 struct PathState<'a> {
     path: Vec<(usize, &'a str)>,
-    visited: HashSet<&'a str>,
+    elephant: Vec<(usize, &'a str)>,
     to_open: HashSet<&'a str>,
-    time: usize,
 }
 
 #[derive(Debug, Clone)]
