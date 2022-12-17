@@ -7,8 +7,11 @@ use std::{
 use anyhow::Result;
 
 pub fn exec() -> Result<()> {
-    let input = fs::read_to_string("/Users/son/workspace/rust-aoc/y2022/inputs/day16.txt")?;
+    let input = fs::read_to_string("./inputs/day16.txt")?;
+    let example_input = fs::read_to_string("./inputs/day16_example.txt")?;
+    solve_part_1(&example_input)?;
     solve_part_1(&input)?;
+    solve_part_2(&example_input)?;
     solve_part_2(&input)?;
     Ok(())
 }
@@ -25,11 +28,6 @@ fn solve_part_1(input: &str) -> Result<()> {
     });
 
     const MAX_TIME: usize = 30;
-    let mut cur = String::from("AA");
-    let mut opened: HashSet<String> = HashSet::new();
-    let mut time = 0;
-    let mut timing: HashMap<usize, Valve> = HashMap::new();
-
     let to_open: HashSet<&str> = valves
         .iter()
         .filter(|v| v.flow != 0)
@@ -151,26 +149,6 @@ fn calculate_released_flow(
     }
 }
 
-fn calculate_score_string(
-    path: &Vec<String>,
-    mapping: &HashMap<&str, Valve>,
-    time_left: usize,
-) -> usize {
-    calculate_score(
-        &path.iter().map(|s| s.as_str()).collect(),
-        mapping,
-        time_left,
-    )
-}
-
-fn calculate_score(path: &Vec<&str>, mapping: &HashMap<&str, Valve>, time_left: usize) -> usize {
-    let valve = mapping.get(*path.last().unwrap()).unwrap();
-    let steps = path.len() - 1;
-    let score = valve.flow;
-
-    (score * (time_left - steps - 1)) / steps
-}
-
 #[derive(Clone)]
 struct PathState<'a> {
     path: Vec<(usize, &'a str)>,
@@ -240,8 +218,6 @@ fn find_shortest_path<'a>(
 mod tests {
     use std::{collections::HashMap, fs};
 
-    use crate::day16::calculate_score;
-
     use super::{calculate_complete_released_flow, find_shortest_path, Valve};
 
     #[test]
@@ -279,27 +255,6 @@ mod tests {
         let score = calculate_complete_released_flow(&timings, &mapping, 30);
 
         assert_eq!(score, 1651);
-    }
-
-    #[test]
-    fn test_calculate_score() {
-        let input = fs::read_to_string("./inputs/day16_example.txt").unwrap();
-        let valves: Vec<Valve> = input.split('\n').map(|l| Valve::from(l)).collect();
-        let mut mapping: HashMap<&str, Valve> = HashMap::new();
-        let mut connected_mapping: HashMap<&str, Vec<String>> = HashMap::new();
-
-        valves.iter().for_each(|v| {
-            mapping.insert(&v.name, v.clone());
-            connected_mapping.insert(&v.name, v.connected.clone());
-        });
-
-        let d_to_j = vec!["DD", "AA", "II", "JJ"];
-        let d_to_b = vec!["DD", "AA", "BB"];
-
-        let dj_score = calculate_score(&d_to_j, &mapping, 28);
-        let db_score = calculate_score(&d_to_b, &mapping, 28);
-
-        assert!(dj_score < db_score);
     }
 
     #[test]
