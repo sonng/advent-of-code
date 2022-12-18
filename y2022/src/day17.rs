@@ -9,7 +9,7 @@ pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day17.txt")?;
     solve_part_1(&input_example)?;
     solve_part_1(&input)?;
-    solve_part_2(&input_example)?;
+    solve_part_2(&input)?;
     Ok(())
 }
 
@@ -46,7 +46,34 @@ fn solve_part_1(input: &str) -> Result<()> {
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
-    println!("Day 17-2: {}", "");
+    let directions: Vec<Direction> = input
+        .as_bytes()
+        .iter()
+        .filter_map(|s| Direction::try_from(*s).ok())
+        .collect();
+
+    let mut rocks = HashSet::new();
+    rocks.extend(vec![
+        Coord::new(0, 0),
+        Coord::new(1, 0),
+        Coord::new(2, 0),
+        Coord::new(3, 0),
+        Coord::new(4, 0),
+        Coord::new(5, 0),
+        Coord::new(6, 0),
+    ]);
+    let mut highest_point = 0;
+
+    let mut directions = directions.iter().cycle();
+
+    for shape in get_shapes().iter().cycle().take(1000000000000) {
+        highest_point = max(
+            highest_point,
+            try_move(&mut rocks, shape, &mut directions, highest_point),
+        );
+    }
+
+    println!("Day 17-2: {}", highest_point);
     Ok(())
 }
 
