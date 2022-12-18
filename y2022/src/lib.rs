@@ -48,6 +48,18 @@ impl Coord {
         }
     }
 
+    fn adjust(&self, reference: &Coord) -> Coord {
+        Coord {
+            x: reference.x + self.x,
+            y: reference.y + self.y,
+        }
+    }
+
+    fn apply(&mut self, other: &Coord) {
+        self.x += other.x;
+        self.y += other.y;
+    }
+
     fn is_on_same_axis(&self, other: &Coord) -> bool {
         self.x == other.x || self.y == other.y
     }
