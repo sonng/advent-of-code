@@ -1,5 +1,5 @@
 use std::{
-    cmp::{max, min},
+    cmp::max,
     collections::{HashMap, HashSet},
     fs,
 };
@@ -53,58 +53,6 @@ fn solve(input: &str, total_shapes: usize) -> isize {
     let mut directions = directions.iter().cycle();
 
     run(&mut terrian, &mut shapes, &mut directions, 0, total_shapes)
-}
-
-const BATCH_SIZE: usize = 10000;
-
-fn solve_in_batches(input: &str, total_shapes: usize) -> isize {
-    let directions: Vec<Direction> = input
-        .as_bytes()
-        .iter()
-        .filter_map(|s| Direction::try_from(*s).ok())
-        .collect();
-    let mut terrian = Terrian::new_with_coords(vec![
-        Coord::new(0, 0),
-        Coord::new(1, 0),
-        Coord::new(2, 0),
-        Coord::new(3, 0),
-        Coord::new(4, 0),
-        Coord::new(5, 0),
-        Coord::new(6, 0),
-    ]);
-
-    let binding = get_shapes();
-    let mut shapes = binding.iter().cycle();
-    let mut directions = directions.iter().cycle();
-    let mut highest_point = 0;
-    let mut chunk_size = 1;
-    let mut cycle_found = false;
-    let mut shapes_taken = 0;
-    let mut cycle_state = CycleState {
-        found: false,
-        height: 0,
-    };
-
-    // Write some cycle detection code
-    while !cycle_found {
-        let shapes_to_take = min(BATCH_SIZE, total_shapes - shapes_taken);
-        let prev_highest_point = highest_point;
-        highest_point = max(
-            highest_point,
-            run(
-                &mut terrian,
-                &mut shapes,
-                &mut directions,
-                highest_point,
-                shapes_to_take,
-            ),
-        );
-        shapes_taken += shapes_to_take;
-
-        // cycle_found = find_cycle(&mut cycle_state, &terrian);
-    }
-
-    highest_point
 }
 
 struct Terrian(HashMap<isize, HashSet<Coord>>);
@@ -161,11 +109,13 @@ impl Terrian {
             .map(|c| c.clone())
             .collect()
     }
-}
 
-struct CycleState {
-    found: bool,
-    height: usize,
+    fn find_and_normalize(&self, row: isize, normalize_to: isize) -> HashSet<Coord> {
+        self.0
+            .get(&row)
+            .map(|h| h.iter().map(|c| c.normalize_y_to(normalize_to)).collect())
+            .unwrap_or(HashSet::new())
+    }
 }
 
 fn run<'a, 'b>(

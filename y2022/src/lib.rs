@@ -55,6 +55,14 @@ impl Coord {
         }
     }
 
+    fn normalize_y_to(&self, to: isize) -> Coord {
+        Coord { x: self.x, y: to }
+    }
+
+    fn normalize_x_to(&self, to: isize) -> Coord {
+        Coord { x: to, y: self.y }
+    }
+
     fn apply(&mut self, other: &Coord) {
         self.x += other.x;
         self.y += other.y;
