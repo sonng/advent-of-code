@@ -1,4 +1,8 @@
-use std::{cmp::max, collections::HashSet, fs};
+use std::{
+    cmp::{max, min},
+    collections::{HashMap, HashSet},
+    fs,
+};
 
 use anyhow::Result;
 
@@ -9,51 +13,32 @@ pub fn exec() -> Result<()> {
     let input = fs::read_to_string("./inputs/day17.txt")?;
     solve_part_1(&input_example)?;
     solve_part_1(&input)?;
-    solve_part_2(&input)?;
+    solve_part_2(&input_example)?;
     Ok(())
 }
 
 fn solve_part_1(input: &str) -> Result<()> {
-    let directions: Vec<Direction> = input
-        .as_bytes()
-        .iter()
-        .filter_map(|s| Direction::try_from(*s).ok())
-        .collect();
-
-    let mut rocks = HashSet::new();
-    rocks.extend(vec![
-        Coord::new(0, 0),
-        Coord::new(1, 0),
-        Coord::new(2, 0),
-        Coord::new(3, 0),
-        Coord::new(4, 0),
-        Coord::new(5, 0),
-        Coord::new(6, 0),
-    ]);
-    let mut highest_point = 0;
-
-    let mut directions = directions.iter().cycle();
-
-    for shape in get_shapes().iter().cycle().take(2022) {
-        highest_point = max(
-            highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
-        );
-    }
+    let highest_point = solve(input, 2022);
 
     println!("Day 17-1: {}", highest_point);
     Ok(())
 }
 
 fn solve_part_2(input: &str) -> Result<()> {
+    let highest_point = solve(input, 1000000000000);
+
+    println!("Day 17-2: {}", highest_point);
+    Ok(())
+}
+
+fn solve(input: &str, total_shapes: usize) -> isize {
     let directions: Vec<Direction> = input
         .as_bytes()
         .iter()
         .filter_map(|s| Direction::try_from(*s).ok())
         .collect();
 
-    let mut rocks = HashSet::new();
-    rocks.extend(vec![
+    let mut terrian = Terrian::new_with_coords(vec![
         Coord::new(0, 0),
         Coord::new(1, 0),
         Coord::new(2, 0),
@@ -62,19 +47,150 @@ fn solve_part_2(input: &str) -> Result<()> {
         Coord::new(5, 0),
         Coord::new(6, 0),
     ]);
-    let mut highest_point = 0;
 
+    let binding = get_shapes();
+    let mut shapes = binding.iter().cycle();
     let mut directions = directions.iter().cycle();
 
-    for shape in get_shapes().iter().cycle().take(1000000000000) {
+    run(&mut terrian, &mut shapes, &mut directions, 0, total_shapes)
+}
+
+const BATCH_SIZE: usize = 10000;
+
+fn solve_in_batches(input: &str, total_shapes: usize) -> isize {
+    let directions: Vec<Direction> = input
+        .as_bytes()
+        .iter()
+        .filter_map(|s| Direction::try_from(*s).ok())
+        .collect();
+    let mut terrian = Terrian::new_with_coords(vec![
+        Coord::new(0, 0),
+        Coord::new(1, 0),
+        Coord::new(2, 0),
+        Coord::new(3, 0),
+        Coord::new(4, 0),
+        Coord::new(5, 0),
+        Coord::new(6, 0),
+    ]);
+
+    let binding = get_shapes();
+    let mut shapes = binding.iter().cycle();
+    let mut directions = directions.iter().cycle();
+    let mut highest_point = 0;
+    let mut chunk_size = 1;
+    let mut cycle_found = false;
+    let mut shapes_taken = 0;
+    let mut cycle_state = CycleState {
+        found: false,
+        height: 0,
+    };
+
+    // Write some cycle detection code
+    while !cycle_found {
+        let shapes_to_take = min(BATCH_SIZE, total_shapes - shapes_taken);
+        let prev_highest_point = highest_point;
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            run(
+                &mut terrian,
+                &mut shapes,
+                &mut directions,
+                highest_point,
+                shapes_to_take,
+            ),
         );
+        shapes_taken += shapes_to_take;
+
+        // cycle_found = find_cycle(&mut cycle_state, &terrian);
     }
 
-    println!("Day 17-2: {}", highest_point);
-    Ok(())
+    highest_point
+}
+
+struct Terrian(HashMap<isize, HashSet<Coord>>);
+
+impl Terrian {
+    fn new() -> Self {
+        Terrian(HashMap::new())
+    }
+
+    fn new_with_coords<I>(coords: I) -> Self
+    where
+        I: IntoIterator<Item = Coord>,
+    {
+        let mut terrian = Self::new();
+
+        terrian.lock_in(coords);
+
+        terrian
+    }
+
+    fn is_valid_move(&self, moves: &HashSet<Coord>) -> bool {
+        if moves.iter().any(|c| c.x < 0 || c.x >= BOUNDS) {
+            return false;
+        }
+
+        !moves
+            .iter()
+            .any(|c| self.0.get(&c.y).map_or(false, |set| set.contains(&c)))
+    }
+
+    fn lock_in<I>(&mut self, moves: I)
+    where
+        I: IntoIterator<Item = Coord>,
+    {
+        moves.into_iter().for_each(|c| {
+            self.0
+                .entry(c.y)
+                .and_modify(|h| {
+                    h.insert(c);
+                })
+                .or_insert(HashSet::from_iter(vec![c.clone()]));
+        });
+    }
+
+    fn difference(&self, coords: &HashSet<Coord>) -> Vec<Coord> {
+        coords
+            .iter()
+            .filter_map(|c| {
+                self.0
+                    .get(&c.y)
+                    .filter(|h| !h.contains(&c))
+                    .and_then(|_| Some(c))
+            })
+            .map(|c| c.clone())
+            .collect()
+    }
+}
+
+struct CycleState {
+    found: bool,
+    height: usize,
+}
+
+fn run<'a, 'b>(
+    terrian: &mut Terrian,
+    shapes: &mut impl Iterator<Item = &'b Shape>,
+    directions: &mut impl Iterator<Item = &'a Direction>,
+    highest_point: isize,
+    total_shapes: usize,
+) -> isize {
+    let mut highest_point = highest_point;
+    let mut taken = 0;
+
+    while let Some(shape) = shapes.next() {
+        highest_point = max(
+            highest_point,
+            try_move(terrian, &shape, directions, highest_point),
+        );
+
+        taken += 1;
+        if taken == total_shapes {
+            break;
+        }
+    }
+
+    highest_point
 }
 
 #[derive(Debug, Clone)]
@@ -174,7 +290,7 @@ impl Direction {
 
 const BOUNDS: isize = 7;
 fn try_move<'a>(
-    rocks: &mut HashSet<Coord>,
+    terrian: &mut Terrian,
     shape: &Shape,
     directions: &mut impl Iterator<Item = &'a Direction>,
     highest_point: isize,
@@ -193,7 +309,7 @@ fn try_move<'a>(
         let new_pos: HashSet<Coord> = shape.transform_by(direction.coord());
 
         // If the space is empty and isn't out of bounds
-        if new_pos.is_disjoint(&rocks) && !new_pos.iter().any(|c| c.x < 0 || c.x >= BOUNDS) {
+        if terrian.is_valid_move(&new_pos) {
             shape.transform(direction.coord());
         }
 
@@ -201,7 +317,7 @@ fn try_move<'a>(
         let new_pos: HashSet<Coord> = shape.transform_by(Direction::Down.coord());
 
         // If the space isn't empty it means it'll come to a stop
-        if !new_pos.is_disjoint(&rocks) {
+        if !terrian.is_valid_move(&new_pos) {
             break;
         }
 
@@ -210,7 +326,7 @@ fn try_move<'a>(
 
     let highest_point = shape.highest_point();
 
-    rocks.extend(shape.0);
+    terrian.lock_in(shape.0);
 
     highest_point
 }
@@ -219,7 +335,10 @@ fn try_move<'a>(
 mod tests {
     use std::{cmp::max, collections::HashSet, fs};
 
-    use crate::{day17::try_move, Coord};
+    use crate::{
+        day17::{try_move, Terrian},
+        Coord,
+    };
 
     use super::{get_shapes, Direction, Shape};
 
@@ -252,22 +371,6 @@ mod tests {
             ])
         );
 
-        /// 0 1 2 3 4 5 6
-        /// . . . # . . . - 3
-        /// . . # # # . . - 2
-        /// . . . # . . . - 1
-        /// . . . . . . . - 0
-
-        /// 0 1 2 3 4 5 6
-        /// . . . . . . . - 8
-        /// . . . . . . . - 7
-        /// . . . . # . . - 6
-        /// . . . . # . . - 5
-        /// . . # # # . . - 4
-        /// . . . . . . . - 3
-        /// . . . . . . . - 2
-        /// . . . . . . . - 1
-        /// # # # # # # # - 0
         assert_eq!(
             shapes[2].0.clone().into_iter().collect::<HashSet<Coord>>(),
             HashSet::from_iter(vec![
@@ -309,7 +412,6 @@ mod tests {
             .filter_map(|s| Direction::try_from(*s).ok())
             .collect();
 
-        let mut rocks = HashSet::new();
         let expected = vec![
             Coord::new(0, 0),
             Coord::new(1, 0),
@@ -319,9 +421,9 @@ mod tests {
             Coord::new(5, 0),
             Coord::new(6, 0),
         ];
-        rocks.extend(expected.clone());
+        let mut terrian = Terrian::new_with_coords(expected.clone());
 
-        let mut expected = HashSet::from_iter(expected);
+        let mut expected: HashSet<Coord> = HashSet::from_iter(expected);
 
         let binding = get_shapes();
         let mut shapes = binding.iter().cycle().take(5);
@@ -332,7 +434,7 @@ mod tests {
         let shape = shapes.next().unwrap();
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            try_move(&mut terrian, shape, &mut directions, highest_point),
         );
 
         // Test ----
@@ -343,7 +445,7 @@ mod tests {
             Coord::new(5, 1),
         ]);
 
-        let difference = rocks.difference(&expected).collect::<Vec<&Coord>>();
+        let difference = terrian.difference(&expected);
         println!("Difference -: {:?}", difference);
         assert_eq!(difference.len(), 0);
 
@@ -351,7 +453,7 @@ mod tests {
         let shape = shapes.next().unwrap();
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            try_move(&mut terrian, shape, &mut directions, highest_point),
         );
 
         //  Test +
@@ -363,7 +465,7 @@ mod tests {
             Coord::new(3, 4),
         ]);
 
-        let difference = rocks.difference(&expected).collect::<Vec<&Coord>>();
+        let difference = terrian.difference(&expected);
         println!("Difference +: {:?}", difference);
         assert_eq!(difference.len(), 0);
 
@@ -371,7 +473,7 @@ mod tests {
         let shape = shapes.next().unwrap();
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            try_move(&mut terrian, shape, &mut directions, highest_point),
         );
 
         // Test L
@@ -395,7 +497,7 @@ mod tests {
         + - - - - - - - +
 
         */
-        let difference = rocks.difference(&expected).collect::<Vec<&Coord>>();
+        let difference = terrian.difference(&expected);
         println!("Difference L: {:?}", difference);
         assert_eq!(difference.len(), 0);
 
@@ -403,7 +505,7 @@ mod tests {
         let shape = shapes.next().unwrap();
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            try_move(&mut terrian, shape, &mut directions, highest_point),
         );
 
         // l
@@ -414,7 +516,7 @@ mod tests {
             Coord::new(4, 7),
         ]);
 
-        let difference = rocks.difference(&expected).collect::<Vec<&Coord>>();
+        let difference = terrian.difference(&expected);
         println!("Difference l: {:?}", difference);
         assert_eq!(difference.len(), 0);
 
@@ -422,7 +524,7 @@ mod tests {
         let shape = shapes.next().unwrap();
         highest_point = max(
             highest_point,
-            try_move(&mut rocks, shape, &mut directions, highest_point),
+            try_move(&mut terrian, shape, &mut directions, highest_point),
         );
 
         // o
@@ -433,7 +535,7 @@ mod tests {
             Coord::new(5, 9),
         ]);
 
-        let difference = rocks.difference(&expected).collect::<Vec<&Coord>>();
+        let difference = terrian.difference(&expected);
         println!("Difference o: {:?}", difference);
         assert_eq!(difference.len(), 0);
     }
